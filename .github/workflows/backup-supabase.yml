@@ -1,0 +1,95 @@
+name: Backup Supabase Database
+
+on:
+  workflow_call:
+    secrets:
+      db_url:
+        required: true
+    inputs:
+      environment:
+        required: true
+        type: string
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      
+      - name: Validate environment
+        run: |
+          echo "Backup environment: ${{ inputs.environment }}"
+          if [[ -z "${{ secrets.db_url }}" ]]; then
+            echo "Error: db_url secret not provided"
+            exit 1
+          fi
+      
+      - name: Create backup directories
+        run: |
+          mkdir -p backups/${{ inputs.environment }}
+      
+      - name: Backup roles
+        run: |
+          supabase db dump \
+            --db-url "${{ secrets.db_url }}" \
+            -f "backups/${{ inputs.environment }}/roles.sql" \
+            --role-only
+      
+      - name: Backup schema
+        run: |
+          supabase db dump \
+            --db-url "${{ secrets.db_url }}" \
+            -f "backups/${{ inputs.environment }}/schema.sql"
+      
+      - name: Backup data
+        run: |
+          supabase db dump \
+            --db-url "${{ secrets.db_url }}" \
+            -f "backups/${{ inputs.environment }}/data.sql" \
+            --data-only \
+            --use-copy
+      
+      - name: Create metadata file
+        run: |
+          cat > backups/${{ inputs.environment }}/metadata.json << EOF
+          {
+            "environment": "${{ inputs.environment }}",
+            "backup_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "workflow_run": "${{ github.run_id }}",
+            "commit_sha": "${{ github.sha }}"
+          }
+          EOF
+      
+      - name: Upload backup artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-backup-${{ inputs.environment }}
+          path: backups/${{ inputs.environment }}/
+          retention-days: 7
+      
+      - name: Commit backup files
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Backup: Supabase ${{ inputs.environment }} database $(date -u +%Y-%m-%d)"
+          file_pattern: backups/${{ inputs.environment }}/*
+          commit_user_name: GitHub Actions
+          commit_user_email: actions@github.com
+      
+      - name: Summary
+        run: |
+          echo "## Backup Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Detail | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | ${{ inputs.environment }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backup Date | $(date -u +%Y-%m-%dT%H:%M:%SZ) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Files | roles.sql, schema.sql, data.sql |" >> $GITHUB_STEP_SUMMARY

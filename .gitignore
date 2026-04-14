@@ -3,7 +3,6 @@
 .env.staging
 .env.prod
 .env.secrets.*
-.backups/
 
 # IDE
 .idea/
