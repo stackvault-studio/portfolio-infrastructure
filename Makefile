@@ -45,11 +45,11 @@ endef
 
 .PHONY: up
 up: ## Start the application
-	@bash run.sh up $(ENV) 
+	powershell -ExecutionPolicy Bypass -File run.ps1 -Target up -ENV $(ENV) 
 
 .PHONY: down
 down: ## Stop the application
-	docker compose -f $(DC_FILE) down
+	powershell -ExecutionPolicy Bypass -File run.ps1 -Target down -ENV $(ENV)
 
 .PHONY: restart
 restart: ## Restart the application
@@ -58,15 +58,15 @@ restart: ## Restart the application
 
 .PHONY: logs
 logs: ## View logs
-	docker compose -f $(DC_FILE) logs -f
+	powershell -ExecutionPolicy Bypass -Command "docker compose -f $(DC_FILE) logs -f"
 
 .PHONY: ps
 ps: ## Show running containers
-	docker compose -f $(DC_FILE) ps
+	powershell -ExecutionPolicy Bypass -Command "docker compose -f $(DC_FILE) ps"
 
 .PHONY: build
 build: ## Rebuild images
-	docker compose -f $(DC_FILE) build --no-cache
+	powershell -ExecutionPolicy Bypass -File run.ps1 -Target build -ENV $(ENV)
 
 # =============================================================================
 # Cleanup
@@ -74,11 +74,11 @@ build: ## Rebuild images
 
 .PHONY: clean
 clean: ## Remove containers and volumes
-	docker compose -f $(DC_FILE) down -v
+	powershell -ExecutionPolicy Bypass -Command "docker compose -f $(DC_FILE) down -v"
 
 .PHONY: prune
 prune: ## Remove unused Docker resources
-	docker system prune -f
+	powershell -ExecutionPolicy Bypass -Command "docker system prune -f"
 
 # =============================================================================
 # Help
