@@ -1,0 +1,14 @@
+# Environment files (contain secrets)
+.env.dev
+.env.staging
+.env.prod
+.env.secrets.*
+.backups/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
