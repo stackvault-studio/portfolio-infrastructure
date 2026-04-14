@@ -53,6 +53,9 @@ jobs:
           fi
           echo "Backup environment: $ENVIRONMENT"
        
+      - name: Get current date
+        run: echo "BACKUP_DATE=$(date -u +%Y-%m-%d)" >> $GITHUB_ENV
+       
       - name: Create backup directories
         run: mkdir -p backups/$ENVIRONMENT
        
@@ -82,7 +85,7 @@ jobs:
       - name: Commit backup files
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "Backup: Supabase ${{ env.ENVIRONMENT }} database $(date -u +%Y-%m-%d)"
+          commit_message: "Backup: Supabase ${{ env.ENVIRONMENT }} database ${{ env.BACKUP_DATE }}"
           file_pattern: backups/${{ env.ENVIRONMENT }}/*
           commit_user_name: GitHub Actions
           commit_user_email: actions@github.com
