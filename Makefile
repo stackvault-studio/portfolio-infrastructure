@@ -45,7 +45,9 @@ endef
 
 .PHONY: up
 up: ## Start the application
-	@bash -c 'set -a; source ./load-env.sh $(ENV); set +a; docker compose -f $(DC_FILE) $(DC_PROFILES) up -d' 
+	@source ./load-env.sh $(ENV) && \
+		export ENVIRONMENT BACKEND_TAG FRONT_TAG BACKEND_IMAGE FRONT_IMAGE DB_HOST DB_PORT DB_NAME DB_USERNAME DB_PASSWORD SUPABASE_URL SUPABASE_ANON_KEY && \
+		docker compose -f $(DC_FILE) $(DC_PROFILES) up -d 
 
 .PHONY: down
 down: ## Stop the application
