@@ -7,82 +7,16 @@ on:
 
 jobs:
   backup-dev:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger backup for dev
-        run: |
-          echo "This workflow should be triggered manually or via schedule"
-          echo "Use workflow_dispatch to select environment"
-      - name: Trigger via repository dispatch
-        uses: dawidd6/action-repo-dispatch@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          repo: oussAbd/portfolio-infrastructure
-          event_type: backup_database
-          client_payload: '{"environment": "dev"}'
-        if: false
-
-  scheduled-backup:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
-        with:
-          version: latest
-      
-      - name: Backup dev
-        env:
-          DB_URL: ${{ secrets.DB_URL_DEV }}
-        run: |
-          mkdir -p backups/dev
-          supabase db dump --db-url "$DB_URL" -f backups/dev/roles.sql --role-only
-          supabase db dump --db-url "$DB_URL" -f backups/dev/schema.sql
-          supabase db dump --db-url "$DB_URL" -f backups/dev/data.sql --data-only --use-copy
-        if: env.DB_URL != ''
-      
-      - name: Backup staging
-        env:
-          DB_URL: ${{ secrets.DB_URL_STAGING }}
-        run: |
-          mkdir -p backups/staging
-          supabase db dump --db-url "$DB_URL" -f backups/staging/roles.sql --role-only
-          supabase db dump --db-url "$DB_URL" -f backups/staging/schema.sql
-          supabase db dump --db-url "$DB_URL" -f backups/staging/data.sql --data-only --use-copy
-        if: env.DB_URL != ''
-      
-      - name: Backup prod
-        env:
-          DB_URL: ${{ secrets.DB_URL_PROD }}
-        run: |
-          mkdir -p backups/prod
-          supabase db dump --db-url "$DB_URL" -f backups/prod/roles.sql --role-only
-          supabase db dump --db-url "$DB_URL" -f backups/prod/schema.sql
-          supabase db dump --db-url "$DB_URL" -f backups/prod/data.sql --data-only --use-copy
-        if: env.DB_URL != ''
-      
-      - name: Create metadata files
-        run: |
-          for env in dev staging prod; do
-            if [ -f "backups/$env/schema.sql" ]; then
-              cat > "backups/$env/metadata.json" << EOF
-              {
-                "environment": "$env",
-                "backup_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-                "workflow_run": "${{ github.run_id }}"
-              }
-              EOF
-            fi
-          done
-      
-      - name: Commit backup files
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "Backup: Supabase databases $(date -u +%Y-%m-%d)"
-          file_pattern: backups/**/*
-          commit_user_name: GitHub Actions
-          commit_user_email: actions@github.com
+    uses: ./.github/workflows/backup-supabase.yml
+    secrets:
+      DB_URL: ${{ secrets.DB_URL_DEV }}
+  
+  backup-staging:
+    uses: ./.github/workflows/backup-supabase.yml
+    secrets:
+      DB_URL: ${{ secrets.DB_URL_STAGING }}
+  
+  backup-prod:
+    uses: ./.github/workflows/backup-supabase.yml
+    secrets:
+      DB_URL: ${{ secrets.DB_URL_PROD }}
