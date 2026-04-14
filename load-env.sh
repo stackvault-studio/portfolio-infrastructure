@@ -65,7 +65,7 @@ declare -A SECRET_NAMES=(
 )
 
 load_local_secrets() {
-    local secrets_file=".env.${ENVIRONMENT}.secrets"
+    local secrets_file=".env.secrets.${ENVIRONMENT}"
     
     if [[ -f "$secrets_file" ]]; then
         log_info "Loading secrets from $secrets_file..."
