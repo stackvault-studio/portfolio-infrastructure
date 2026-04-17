@@ -177,10 +177,18 @@ main() {
         load_from_oci || load_from_secrets_file
     fi
     
+    export ENVIRONMENT BACKEND_TAG FRONT_TAG DB_HOST DB_PORT DB_NAME DB_USERNAME DB_PASSWORD
+    
     log_info "Environment loaded successfully!"
 }
 
-# Only run main if executed directly (not sourced)
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     main "$@"
+else
+    load_config
+    if [[ "$ENVIRONMENT" == "local" ]]; then
+        load_local_secrets
+    else
+        load_from_oci || load_from_secrets_file
+    fi
 fi

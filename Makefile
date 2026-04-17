@@ -20,7 +20,7 @@ endif
 
 # Docker compose files
 DC_FILE := docker-compose.yml
-DC_PROFILES := $(if $(filter $(ENV),local),--profile local,)
+DC_PROFILES := --profile $(ENV)
 
 # Colors
 GREEN := $(shell tput setaf 2 2>/dev/null || echo "")
@@ -45,11 +45,11 @@ endef
 
 .PHONY: up
 up: ## Start the application
-	powershell -ExecutionPolicy Bypass -File run.ps1 -Target up -ENV $(ENV) 
+	bash -c "set -a && source ./load-env.sh $(ENV) && docker compose -f $(DC_FILE) $(DC_PROFILES) up -d" 
 
 .PHONY: down
 down: ## Stop the application
-	powershell -ExecutionPolicy Bypass -File run.ps1 -Target down -ENV $(ENV)
+	docker compose -f $(DC_FILE) down
 
 .PHONY: restart
 restart: ## Restart the application
@@ -58,15 +58,15 @@ restart: ## Restart the application
 
 .PHONY: logs
 logs: ## View logs
-	powershell -ExecutionPolicy Bypass -Command "docker compose -f $(DC_FILE) logs -f"
+	docker compose -f $(DC_FILE) logs -f
 
 .PHONY: ps
 ps: ## Show running containers
-	powershell -ExecutionPolicy Bypass -Command "docker compose -f $(DC_FILE) ps"
+	docker compose -f $(DC_FILE) ps
 
 .PHONY: build
 build: ## Rebuild images
-	powershell -ExecutionPolicy Bypass -File run.ps1 -Target build -ENV $(ENV)
+	bash -c "set -a && source ./load-env.sh $(ENV) && docker compose -f $(DC_FILE) $(DC_PROFILES) build"
 
 # =============================================================================
 # Cleanup
@@ -74,7 +74,7 @@ build: ## Rebuild images
 
 .PHONY: clean
 clean: ## Remove containers and volumes
-	powershell -ExecutionPolicy Bypass -Command "docker compose -f $(DC_FILE) down -v"
+	docker compose -f $(DC_FILE) down -v
 
 .PHONY: prune
 prune: ## Remove unused Docker resources
