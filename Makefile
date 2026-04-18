@@ -47,6 +47,10 @@ endef
 up: ## Start the application
 	bash -c "set -a && source ./load-env.sh $(ENV) && docker compose -f $(DC_FILE) $(DC_PROFILES) up -d" 
 
+.PHONY: deploy
+deploy: ## Deploy to environment (fetch latest tags, update env, deploy)
+	@bash ./deploy.sh $(ENV) 
+
 .PHONY: down
 down: ## Stop the application
 	docker compose -f $(DC_FILE) down
@@ -98,8 +102,9 @@ help: ## Show this help message
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z0-9_-]+:.*##/ {printf "  $(GREEN)%-20s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 	@echo ""
 	@echo "Examples:"
+	@echo "  make deploy ENV=dev         # Fetch tags, update env, deploy dev"
+	@echo "  make deploy ENV=prod       # Fetch tags, update env, deploy prod"
 	@echo "  make up ENV=dev          # Start dev environment"
 	@echo "  make up ENV=staging     # Start staging environment"
-	@echo "  make up ENV=prod        # Start prod environment"
-	@echo "  make logs ENV=dev       # View dev logs"
-	@echo "  make down ENV=staging  # Stop staging"
+	@echo "  make logs ENV=dev        # View dev logs"
+	@echo "  make down ENV=staging     # Stop staging"

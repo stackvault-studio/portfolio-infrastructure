@@ -163,6 +163,81 @@ load_from_secrets_file() {
 }
 
 # =============================================================================
+# SSL Certificates
+# =============================================================================
+
+declare -A SSL_SECRET_NAMES=(
+    ["SSL_CERT"]="SSL_CERT"
+    ["SSL_KEY"]="SSL_KEY"
+)
+
+load_local_ssl() {
+    local secrets_file=".env.secrets.${ENVIRONMENT}"
+    local cert_dir="certs"
+    
+    if [[ -f "$secrets_file" ]]; then
+        set -a
+        source "$secrets_file"
+        set +a
+        
+        mkdir -p "$cert_dir"
+        
+        if [[ -n "${SSL_CERT:-}" ]]; then
+            echo "$SSL_CERT" > "$cert_dir/cert.pem"
+            log_info "SSL certificate written to $cert_dir/cert.pem"
+        fi
+        
+        if [[ -n "${SSL_KEY:-}" ]]; then
+            echo "$SSL_KEY" > "$cert_dir/key.pem"
+            log_info "SSL key written to $cert_dir/key.pem"
+        fi
+        
+        if [[ -n "${SSL_CERT:-}" || -n "${SSL_KEY:-}" ]]; then
+            log_info "Local SSL certificates loaded from $secrets_file"
+        fi
+    fi
+}
+
+load_oci_ssl() {
+    local cert_dir="certs"
+    mkdir -p "$cert_dir"
+    
+    for var_name in "${!SSL_SECRET_NAMES[@]}"; do
+        local secret_name="${SSL_SECRET_NAMES[$var_name]}"
+        
+        local secret_ocid
+        secret_ocid=$(oci vault secret list \
+            --compartment-id "$OCI_COMPARTMENT_ID" \
+            --vault-id "$OCI_VAULT_ID" \
+            --name "$secret_name" \
+            --query "data[0].id" \
+            --raw-output 2>/dev/null) || true
+        
+        if [[ -n "$secret_ocid" && "$secret_ocid" != "null" ]]; then
+            local secret_value
+            secret_value=$(oci secrets secret-bundle get \
+                --secret-id "$secret_ocid" \
+                --query 'data."secret-bundle-content".content' \
+                --raw-output 2>/dev/null)
+            
+            if [[ -n "$secret_value" ]]; then
+                local decoded
+                decoded=$(echo "$secret_value" | base64 -d)
+                
+                if [[ "$var_name" == "SSL_CERT" ]]; then
+                    echo "$decoded" > "$cert_dir/cert.pem"
+                else
+                    echo "$decoded" > "$cert_dir/key.pem"
+                fi
+                log_info "SSL $var_name loaded from OCI"
+            fi
+        else
+            log_warn "SSL secret not found in OCI: $secret_name"
+        fi
+    done
+}
+
+# =============================================================================
 # Main
 # =============================================================================
 
@@ -173,8 +248,10 @@ main() {
     
     if [[ "$ENVIRONMENT" == "local" ]]; then
         load_local_secrets
+        load_local_ssl
     else
         load_from_oci || load_from_secrets_file
+        load_oci_ssl
     fi
     
     export ENVIRONMENT BACKEND_TAG FRONT_TAG DB_HOST DB_PORT DB_NAME DB_USERNAME DB_PASSWORD
@@ -188,7 +265,9 @@ else
     load_config
     if [[ "$ENVIRONMENT" == "local" ]]; then
         load_local_secrets
+        load_local_ssl
     else
         load_from_oci || load_from_secrets_file
+        load_oci_ssl
     fi
 fi
